@@ -30,6 +30,17 @@ services:
       - MYSQL_USER=yii2advanced
       - MYSQL_PASSWORD=secret
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - mysql
+    restart: always
+    ports:
+      - 21070:80
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: verysecret
+
   #pgsql:
   #  image: postgres:9.5
   #  environment:
