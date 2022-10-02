@@ -1,8 +1,9 @@
 <?php
+
 namespace common\models;
 
+use sizeg\jwt\Jwt;
 use Yii;
-use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
@@ -14,7 +15,6 @@ use yii\web\IdentityInterface;
  * @property string $username
  * @property string $password_hash
  * @property string $password_reset_token
- * @property string $verification_token
  * @property string $email
  * @property string $auth_key
  * @property integer $status
@@ -25,9 +25,63 @@ use yii\web\IdentityInterface;
 class User extends ActiveRecord implements IdentityInterface
 {
     const STATUS_DELETED = 0;
-    const STATUS_INACTIVE = 9;
     const STATUS_ACTIVE = 10;
 
+    const JWT_ISSUER = 'http://localhost:8000';
+    const JWT_AUDIENCE = 'http://localhost:8000';
+    const JWT_SECRET = 'secret';
+    const JWT_ID = '4f1g23a12aa';
+    const JWT_SIGNER = 'HS256';
+
+    const PERMISSION_COMPANIES_LIST = 'permission_companies_list';
+    const PERMISSION_COMPANY_DETAIL = 'permission_company_detail';
+    const PERMISSION_CREATE_COMPANY = 'permission_create_company';
+    const PERMISSION_UPDATE_COMPANY = 'permission_update_company';
+    const PERMISSION_DELETE_COMPANY = 'permission_delete_company';
+
+    const PERMISSION_EMPLOYEES_LIST = 'permission_employees_list';
+    const PERMISSION_EMPLOYEE_DETAIL = 'permission_employee_detail';
+    const PERMISSION_CREATE_EMPLOYEE = 'permission_create_employee';
+    const PERMISSION_UPDATE_EMPLOYEE = 'permission_update_employee';
+    const PERMISSION_DELETE_EMPLOYEE = 'permission_delete_employee';
+
+    const PERMISSION_UPDATE_OWN_COMPANY = 'permission_update_own_company';
+    const PERMISSION_UPDATE_OWN_EMPLOYEE = 'permission_update_own_employee';
+
+    const ROLE_ADMIN = 'admin';
+    const ROLE_COMPANY = 'company';
+
+    public static $permissions = [
+        User::PERMISSION_COMPANIES_LIST,
+        User::PERMISSION_COMPANY_DETAIL,
+        User::PERMISSION_CREATE_COMPANY,
+        User::PERMISSION_UPDATE_COMPANY,
+        User::PERMISSION_DELETE_COMPANY,
+
+        User::PERMISSION_EMPLOYEES_LIST,
+        User::PERMISSION_EMPLOYEE_DETAIL,
+        User::PERMISSION_CREATE_EMPLOYEE,
+        User::PERMISSION_UPDATE_EMPLOYEE,
+        User::PERMISSION_DELETE_EMPLOYEE,
+    ];
+
+    public function getJWTToken()
+    {
+        /** @var Jwt $jwt */
+        $jwt = Yii::$app->jwt;
+        $signer = $jwt->getSigner(self::JWT_SIGNER);
+        $key = $jwt->getKey();
+        $time = time();
+
+        return $jwt->getBuilder()
+            ->issuedBy(self::JWT_ISSUER)
+            ->permittedFor(self::JWT_AUDIENCE)
+            ->identifiedBy(self::JWT_ID, true)
+            ->issuedAt($time)
+            ->expiresAt($time + 3600)
+            ->withClaim('uid', $this->id)
+            ->getToken($signer, $key);
+    }
 
     /**
      * {@inheritdoc}
@@ -53,8 +107,8 @@ class User extends ActiveRecord implements IdentityInterface
     public function rules()
     {
         return [
-            ['status', 'default', 'value' => self::STATUS_INACTIVE],
-            ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_DELETED]],
+            ['status', 'default', 'value' => self::STATUS_ACTIVE],
+            ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_DELETED]],
         ];
     }
 
@@ -71,7 +125,7 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
+        return self::findOne($token->getClaim('uid'));
     }
 
     /**
@@ -104,19 +158,6 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * Finds user by verification email token
-     *
-     * @param string $token verify email token
-     * @return static|null
-     */
-    public static function findByVerificationToken($token) {
-        return static::findOne([
-            'verification_token' => $token,
-            'status' => self::STATUS_INACTIVE
-        ]);
-    }
-
-    /**
      * Finds out if password reset token is valid
      *
      * @param string $token password reset token
@@ -128,7 +169,7 @@ class User extends ActiveRecord implements IdentityInterface
             return false;
         }
 
-        $timestamp = (int) substr($token, strrpos($token, '_') + 1);
+        $timestamp = (int)substr($token, strrpos($token, '_') + 1);
         $expire = Yii::$app->params['user.passwordResetTokenExpire'];
         return $timestamp + $expire >= time();
     }
@@ -192,14 +233,6 @@ class User extends ActiveRecord implements IdentityInterface
     public function generatePasswordResetToken()
     {
         $this->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
-    }
-
-    /**
-     * Generates new token for email verification
-     */
-    public function generateEmailVerificationToken()
-    {
-        $this->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
     }
 
     /**

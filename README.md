@@ -58,3 +58,46 @@ frontend
 vendor/                  contains dependent 3rd-party packages
 environments/            contains environment-based overrides
 ```
+
+Install via docker
+-------------------
+Run project with docker containers
+```bash
+docker-compose up -d
+docker exec -it rest-app_frontend_1 bash
+```
+
+Install packages
+-------------------
+Install composer package
+```bash
+composer install
+```
+
+Yii configurations
+-------------------
+Generate project configuration files
+```bash
+./init
+```
+
+Run migration
+-------------------
+Create project tables
+```bash
+./yii migrate
+```
+
+Run RBAC migration
+-------------------
+Create RBAC tables
+```bash
+yii migrate --migrationPath=@yii/rbac/migrations
+```
+
+Initial users
+-------------------
+Create users with permissions and set them to users by their role
+```bash
+yii rbac/init
+```
