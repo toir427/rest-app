@@ -66,7 +66,7 @@ class CompanyController extends Controller
     {
         $model = new Company();
         $model->scenario = Company::SCENARIO_CREATE;
-        $model->attributes = Yii::$app->request->post();
+        $model->load(Yii::$app->request->post(), '');
         if ($model->save()) {
             return [
                 'status' => 200,
@@ -88,7 +88,7 @@ class CompanyController extends Controller
     {
         $model = $this->findModel($id);
         $model->scenario = Company::SCENARIO_UPDATE;
-        $model->attributes = Yii::$app->request->post();
+        $model->load(Yii::$app->request->post(), '');
         if ($model->save()) {
             return [
                 'status' => 200,
