@@ -2,29 +2,18 @@
 
 namespace app\modules\v1\controllers;
 
-use common\models\User;
 use frontend\modules\v1\models\Employee;
 use sizeg\jwt\JwtHttpBearerAuth;
 use Yii;
-use yii\rest\ActiveController;
-use yii\web\ForbiddenHttpException;
+use yii\filters\VerbFilter;
+use yii\rest\Controller;
+use yii\web\NotFoundHttpException;
 
 /**
  * EmployeeController implements the CRUD actions for Employee model.
  */
-class EmployeeController extends ActiveController
+class EmployeeController extends Controller
 {
-    public $modelClass = 'frontend\modules\v1\models\Employee';
-
-    public $createScenario = Employee::SCENARIO_CREATE;
-
-    public $updateScenario = Employee::SCENARIO_UPDATE;
-
-    public $serializer = [
-        'class' => 'yii\rest\Serializer',
-        'collectionEnvelope' => 'items',
-    ];
-
     /**
      * {@inheritdoc}
      */
@@ -34,65 +23,107 @@ class EmployeeController extends ActiveController
         $behaviors['bearerAuth'] = [
             'class' => JwtHttpBearerAuth::className(),
         ];
-
-        // remove authentication filter
-        $auth = $behaviors['authenticator'];
-        unset($behaviors['authenticator']);
-
-        // add CORS filter
-        $behaviors['corsFilter'] = [
-            'class' => \yii\filters\Cors::class,
+        $behaviors['verbs'] = [
+            'class' => VerbFilter::className(),
+            'actions' => [
+                'list' => ['GET'],
+                'view' => ['GET'],
+                'create' => ['POST'],
+                'update' => ['POST'],
+                'delete' => ['DELETE'],
+            ],
         ];
-
-        // re-add authentication filter
-        $behaviors['authenticator'] = $auth;
 
         return $behaviors;
     }
 
     /**
-     * @param string $action
-     * @param Employee|null $model
-     * @param array $params
-     * @throws \yii\web\ForbiddenHttpException
+     * Lists all Company models.
+     * @return array
      */
-    public function checkAccess($action, $model = null, $params = [])
+    public function actionIndex()
     {
-        /**
-         * admin
-         *      can manage all companies (CRUD - all permission)
-         *      can view all employees (R)
-         * company
-         *      can manage own information - by id (CRUD)
-         *      can manage own employees' information (CRUD)
-         * */
-
-        $permissions = [
-            'index' => User::PERMISSION_EMPLOYEES_LIST,
-            'view' => User::PERMISSION_EMPLOYEE_DETAIL,
-            'create' => User::PERMISSION_CREATE_EMPLOYEE,
-            'update' => User::PERMISSION_UPDATE_EMPLOYEE,
-            'delete' => User::PERMISSION_DELETE_EMPLOYEE
+        $all = Employee::find()->all();
+        return [
+            'status' => 200,
+            'error' => null,
+            'success' => true,
+            'result' => $all
         ];
+    }
 
-        foreach ($permissions as $key => $permission) {
-            if ($action === $key && !Yii::$app->user->can($permission)) {
-                throw new ForbiddenHttpException(
-                    Yii::t('app', 'You are not allowed to view this {action}', [
-                        'action' => $action
-                    ])
-                );
-            }
+    public function actionView($id)
+    {
+        return [
+            'status' => 200,
+            'error' => null,
+            'success' => true,
+            'result' => $this->findModel($id),
+        ];
+    }
+
+    public function actionCreate()
+    {
+        $model = new Employee();
+        $model->scenario = Employee::SCENARIO_CREATE;
+        $model->attributes = Yii::$app->request->post();
+        if ($model->save()) {
+            return [
+                'status' => 200,
+                'error' => null,
+                'success' => true,
+                'result' => $model,
+            ];
         }
 
-        // company can manage own employees' information
-        $user = $model != null && $model->company != null ? $model->company->user_id : null;
-        if ($action === 'update' && !Yii::$app->user->can(User::PERMISSION_UPDATE_OWN_EMPLOYEE, ['user' => $user])) {
-            throw new ForbiddenHttpException(
-                Yii::t('app', 'You are not allowed to view this {action}', [
-                    'action' => $action
-                ])
-            );
+        return [
+            'status' => 400,
+            'error' => $model->getErrors(),
+            'success' => false,
+            'result' => null,
+        ];
+    }
+
+    public function actionUpdate($id)
+    {
+        $model = $this->findModel($id);
+        $model->scenario = Employee::SCENARIO_UPDATE;
+        $model->attributes = Yii::$app->request->post();
+        if ($model->save()) {
+            return [
+                'status' => 200,
+                'error' => null,
+                'success' => true,
+                'result' => $model,
+            ];
         }
+
+        return [
+            'status' => 400,
+            'error' => $model->getErrors(),
+            'success' => false,
+            'result' => null,
+        ];
+    }
+
+    public function actionDelete($id)
+    {
+        $this->findModel($id)->delete();
+
+        return [
+            'status' => 200,
+            'error' => null,
+            'success' => true,
+            'result' => null,
+        ];
+    }
+
+    protected function findModel($id)
+    {
+        if (($model = Employee::findOne($id)) !== null) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
     }
 }
