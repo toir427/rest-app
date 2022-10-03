@@ -15,7 +15,7 @@ class Employee extends \common\models\Employee
             'position',
             'phone_number',
             'address',
-            //'company_id',
+            'company_id',
             'status',
             'created_at',
             'updated_at',

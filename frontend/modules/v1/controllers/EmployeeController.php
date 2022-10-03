@@ -66,7 +66,7 @@ class EmployeeController extends Controller
     {
         $model = new Employee();
         $model->scenario = Employee::SCENARIO_CREATE;
-        $model->attributes = Yii::$app->request->post();
+        $model->load(Yii::$app->request->post(), '');
         if ($model->save()) {
             return [
                 'status' => 200,
@@ -88,7 +88,7 @@ class EmployeeController extends Controller
     {
         $model = $this->findModel($id);
         $model->scenario = Employee::SCENARIO_UPDATE;
-        $model->attributes = Yii::$app->request->post();
+        $model->load(Yii::$app->request->post(), '');
         if ($model->save()) {
             return [
                 'status' => 200,
